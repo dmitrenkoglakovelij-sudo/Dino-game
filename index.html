@@ -1,1 +1,281 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Динозаврик — Бесконечный бег</title>
 
+<style>
+    body {
+        margin: 0;
+        background: #171923;
+        color: white;
+        font-family: Arial, sans-serif;
+        text-align: center;
+        overflow: hidden;
+    }
+
+    h1 {
+        margin: 15px 0 5px;
+    }
+
+    canvas {
+        display: block;
+        margin: 15px auto;
+        width: 95%;
+        max-width: 900px;
+        background: linear-gradient(#83d9ff, #e4faff);
+        border: 3px solid white;
+        border-radius: 12px;
+        touch-action: manipulation;
+    }
+
+    button {
+        padding: 14px 25px;
+        font-size: 18px;
+        border: none;
+        border-radius: 12px;
+        background: #45d483;
+        color: #102b1c;
+        font-weight: bold;
+    }
+</style>
+</head>
+
+<body>
+
+<h1>🦖 Бегущий динозаврик</h1>
+<p>Нажимай на экран или пробел, чтобы прыгнуть!</p>
+
+<canvas id="game" width="900" height="400"></canvas>
+
+<button onclick="restartGame()">Начать заново</button>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+const ground = 330;
+
+let dinosaur;
+let obstacles;
+let score;
+let speed;
+let gameOver;
+let frame;
+
+function restartGame() {
+    dinosaur = {
+        x: 100,
+        y: ground - 65,
+        width: 55,
+        height: 65,
+        velocityY: 0,
+        jumping: false
+    };
+
+    obstacles = [];
+    score = 0;
+    speed = 6;
+    gameOver = false;
+    frame = 0;
+
+    requestAnimationFrame(gameLoop);
+}
+
+function jump() {
+    if (gameOver) {
+        restartGame();
+        return;
+    }
+
+    if (!dinosaur.jumping) {
+        dinosaur.velocityY = -16;
+        dinosaur.jumping = true;
+    }
+}
+
+document.addEventListener("keydown", event => {
+    if (event.code === "Space" || event.code === "ArrowUp") {
+        event.preventDefault();
+        jump();
+    }
+});
+
+canvas.addEventListener("pointerdown", jump);
+
+function drawDinosaur() {
+    const d = dinosaur;
+
+    // Хвост
+    ctx.fillStyle = "#258c4b";
+    ctx.beginPath();
+    ctx.moveTo(d.x + 8, d.y + 43);
+    ctx.lineTo(d.x - 17, d.y + 55);
+    ctx.lineTo(d.x + 12, d.y + 57);
+    ctx.fill();
+
+    // Тело
+    ctx.fillStyle = "#35b967";
+    ctx.fillRect(d.x + 8, d.y + 25, 35, 30);
+
+    // Голова
+    ctx.beginPath();
+    ctx.arc(d.x + 38, d.y + 20, 20, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Морда
+    ctx.fillRect(d.x + 35, d.y + 20, 24, 13);
+
+    // Глаз
+    ctx.fillStyle = "white";
+    ctx.beginPath();
+    ctx.arc(d.x + 43, d.y + 13, 6, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = "black";
+    ctx.beginPath();
+    ctx.arc(d.x + 45, d.y + 13, 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Ноги
+    ctx.fillStyle = "#258c4b";
+
+    let legMove = dinosaur.jumping ? 0 : Math.sin(frame * 0.3) * 5;
+
+    ctx.fillRect(d.x + 12, d.y + 50, 10, 15 + legMove);
+    ctx.fillRect(d.x + 32, d.y + 50, 10, 15 - legMove);
+
+    // Зубы
+    ctx.fillStyle = "white";
+    ctx.fillRect(d.x + 49, d.y + 29, 5, 5);
+}
+
+function createObstacle() {
+    obstacles.push({
+        x: canvas.width,
+        y: ground - 40,
+        width: 30 + Math.random() * 20,
+        height: 40
+    });
+}
+
+function drawObstacle(obstacle) {
+    ctx.fillStyle = "#a54b32";
+    ctx.fillRect(
+        obstacle.x,
+        obstacle.y,
+        obstacle.width,
+        obstacle.height
+    );
+
+    ctx.fillStyle = "#df7950";
+    ctx.fillRect(
+        obstacle.x + 5,
+        obstacle.y + 5,
+        8,
+        12
+    );
+}
+
+function gameLoop() {
+    if (gameOver) {
+        drawGameOver();
+        return;
+    }
+
+    frame++;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Облака
+    ctx.fillStyle = "white";
+    ctx.beginPath();
+    ctx.arc(180, 75, 22, 0, Math.PI * 2);
+    ctx.arc(205, 70, 30, 0, Math.PI * 2);
+    ctx.arc(235, 78, 20, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Земля
+    ctx.fillStyle = "#55a94e";
+    ctx.fillRect(0, ground, canvas.width, 70);
+
+    ctx.fillStyle = "#367d36";
+    ctx.fillRect(0, ground, canvas.width, 8);
+
+    // Прыжок и гравитация
+    dinosaur.y += dinosaur.velocityY;
+    dinosaur.velocityY += 0.7;
+
+    if (dinosaur.y >= ground - dinosaur.height) {
+        dinosaur.y = ground - dinosaur.height;
+        dinosaur.velocityY = 0;
+        dinosaur.jumping = false;
+    }
+
+    // Препятствия
+    if (frame % Math.max(35, Math.floor(90 - speed * 3)) === 0) {
+        createObstacle();
+    }
+
+    for (let i = obstacles.length - 1; i >= 0; i--) {
+        const o = obstacles[i];
+        o.x -= speed;
+
+        drawObstacle(o);
+
+        // Проверка столкновения
+        if (
+            dinosaur.x + dinosaur.width - 8 > o.x &&
+            dinosaur.x + 10 < o.x + o.width &&
+            dinosaur.y + dinosaur.height - 5 > o.y
+        ) {
+            gameOver = true;
+        }
+
+        if (o.x + o.width < 0) {
+            obstacles.splice(i, 1);
+            score += 10;
+        }
+    }
+
+    drawDinosaur();
+
+    // Счёт
+    ctx.fillStyle = "#172333";
+    ctx.font = "bold 26px Arial";
+    ctx.fillText("Счёт: " + score, 25, 40);
+
+    // Увеличение скорости
+    speed += 0.002;
+
+    requestAnimationFrame(gameLoop);
+}
+
+function drawGameOver() {
+    ctx.fillStyle = "rgba(0, 0, 0, 0.65)";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.fillStyle = "white";
+    ctx.textAlign = "center";
+    ctx.font = "bold 46px Arial";
+    ctx.fillText("ИГРА ОКОНЧЕНА!", canvas.width / 2, 170);
+
+    ctx.font = "28px Arial";
+    ctx.fillText("Счёт: " + score, canvas.width / 2, 220);
+
+    ctx.font = "20px Arial";
+    ctx.fillText(
+        "Нажми «Начать заново»",
+        canvas.width / 2,
+        265
+    );
+
+    ctx.textAlign = "left";
+}
+
+restartGame();
+</script>
+
+</body>
+  </html>
